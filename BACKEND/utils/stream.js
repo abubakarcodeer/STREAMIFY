@@ -21,11 +21,12 @@ exports.createStreamUser = async (userData) => {
 }
 
 exports.generateStreamToken = (userId) => {
-    // try {
-    //     const token = streamClient.createUserToken(userId);
-    //     return token;
-    // } catch (error) {
-    //     console.error("Error generating Stream token:", error);
-    //     throw error;
-    // }
+    try {
+        //ensure userId is a string
+        const token = streamClient.createToken(userId.toString());
+        return token;
+    } catch (error) {
+        console.error("Error generating Stream token:", error);
+        throw error;
+    }
 }

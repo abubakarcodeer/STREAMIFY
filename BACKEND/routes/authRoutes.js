@@ -8,6 +8,7 @@ authRouter.post('/signup', authController.signup);
 authRouter.post('/logout', authController.logout);
 
 authRouter.post('/onboarding',protectRoute,authController.onboarding);
+
 authRouter.get('/me',protectRoute,(req,res) => {
     res.status(200).json({
         success: true,
