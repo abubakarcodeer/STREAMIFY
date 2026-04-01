@@ -6,10 +6,15 @@ const authRoutes = require('./routes/authRoutes.js');
 const { connectDB } = require("./utils/db.js");
 const userRoutes  = require("./routes/userRoutes.js");
 const chatRoutes  = require("./routes/chatRoutes.js");
+const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT;
 
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true, //allow frontend to send Cookies
+}))
 app.use(express.json());
 app.use(cookieParser());
 
