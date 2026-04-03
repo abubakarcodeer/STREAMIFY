@@ -31,7 +31,7 @@ exports.signup = async (req, res) => {
           message: "Email already exists, please use a different email",
         });
     }
-    const idx = Math.floor(Math.random() * 100) + 1; // Generate a random number between 1 and 100
+    const idx = Math.floor(Math.random() * 10); // Generate a random number between 0 and 09
     const randomPic = `https://randomuser.me/api/portraits/lego/${idx}.jpg`;
 
     const newUser = await User.create({
@@ -98,9 +98,16 @@ exports.login = async(req, res) => {
       expiresIn: "7d",
     });
 
+    res.cookie("jwt", token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
     res.status(200).json({
       success: true,
-      token
+      user
     });
 
   } catch (err) {
