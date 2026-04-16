@@ -1,23 +1,28 @@
-import { Link, useLocation } from "react-router";
+import { Link } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { BellIcon, LogOutIcon, ShipWheelIcon } from "lucide-react";
 import {ThemeSelector} from "./ThemeSelector";
 import useLogout from "../hooks/useLogout";
 import { handleImageError } from "../utils/utils";
 import { useQuery } from "@tanstack/react-query";
-import { getFriendRequests } from "../utils/api";
+import { getFriendRequests, getOutgoingFriendReqs } from "../utils/api";
 
 export const Navbar = () => {
   const { authUser } = useAuthUser();
-  const location = useLocation();
-  const isChatPage = location.pathname?.startsWith("/chat");
-
+ 
   const { data: friendRequests } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
   });
 
+  const { data: outgoingReqs } = useQuery({
+    queryKey: ["outgoingFriendReqs"],
+    queryFn: getOutgoingFriendReqs,
+  });
+
   const incomingCount = friendRequests?.incomingReqs?.length || 0;
+  const outgoingCount = outgoingReqs?.outgoingReqs?.length || 0;
+  const totalCount = incomingCount + outgoingCount;
 
   // const queryClient = useQueryClient();
   // const { mutate: logoutMutation } = useMutation({
@@ -29,11 +34,10 @@ export const Navbar = () => {
 
   return (
     <nav className="bg-base-200 border-b border-base-300 sticky top-0 z-30 h-16 flex items-center">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto  sm:px-6 lg:px-8">
         <div className="flex items-center justify-end w-full">
-          {/* LOGO - ONLY IN THE CHAT PAGE */}
-          {isChatPage && (
-            <div className="pl-5">
+         
+            <div className="pl-0">
               <Link to="/" className="flex items-center gap-2.5">
                 <ShipWheelIcon className="size-9 text-primary" />
                 <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-linear-to-r from-primary to-secondary  tracking-wider">
@@ -41,15 +45,15 @@ export const Navbar = () => {
                 </span>
               </Link>
             </div>
-          )}
+          
 
           <div className="flex items-center gap-3 sm:gap-4 ml-auto indicator">
             <Link to={"/notifications"}>
               <button className="btn btn-ghost btn-circle">
                 <BellIcon className="h-6 w-6 text-base-content opacity-70" />
-                {incomingCount > 0 && (
+                {totalCount > 0 && (
                   <span className="indicator-item badge badge-primary badge-sm">
-                    {incomingCount}
+                    {totalCount}
                   </span>
                 )}
               </button>

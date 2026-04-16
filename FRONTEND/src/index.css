@@ -2,3 +2,7 @@
 @plugin "daisyui" {
   themes: all;
 }
+.str-chat__channel-header {
+  max-width: 1280px;
+  
+}

@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { acceptFriendRequest, getFriendRequests, getOutgoingFriendReqs } from "../utils/api";
-import { BellIcon, ClockIcon, MessageSquareIcon, UserCheckIcon, SendIcon } from "lucide-react";
+import { acceptFriendRequest, getFriendRequests, getOutgoingFriendReqs, withdrawFriendRequest } from "../utils/api";
+import { BellIcon, ClockIcon, MessageSquareIcon, UserCheckIcon, SendIcon, XIcon, TrashIcon } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFounds";
 import { handleImageError } from "../utils/utils";
+import { useState } from "react";
 
 export const NotificationsPage = () => {
   const queryClient = useQueryClient();
+  const [dismissedNotifications, setDismissedNotifications] = useState(() => {
+    const stored = localStorage.getItem("dismissedNotifications");
+    return stored ? JSON.parse(stored) : [];
+  });
 
   const { data: friendRequests, isLoading } = useQuery({
     queryKey: ["friendRequests"],
@@ -26,9 +31,27 @@ export const NotificationsPage = () => {
     },
   });
 
+  const { mutate: withdrawRequestMutation, isPending: isWithdrawing } = useMutation({
+    mutationFn: withdrawFriendRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+    },
+  });
+
   const incomingRequests = friendRequests?.incomingReqs || [];
   const acceptedRequests = friendRequests?.acceptedReqs || [];
   const pendingOutgoing = outgoingReqs?.outgoingReqs || [];
+
+  // Filter out dismissed notifications
+  const visibleAcceptedRequests = acceptedRequests.filter(
+    (notification) => !dismissedNotifications.includes(notification._id)
+  );
+
+  const handleDismissNotification = (notificationId) => {
+    const updated = [...dismissedNotifications, notificationId];
+    setDismissedNotifications(updated);
+    localStorage.setItem("dismissedNotifications", JSON.stringify(updated));
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -125,8 +148,20 @@ export const NotificationsPage = () => {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-warning">Pending</span>
-                            <span className="loading loading-spinner loading-sm"></span>
+                            <button
+                              className="btn btn-error btn-xs text-white"
+                              onClick={() => withdrawRequestMutation(request._id)}
+                              disabled={isWithdrawing}
+                            >
+                              {isWithdrawing ? (
+                                <span className="loading loading-spinner loading-xs"></span>
+                              ) : (
+                                <>
+                                  <TrashIcon className="h-3 w-3" />
+                                  Withdraw
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -137,7 +172,7 @@ export const NotificationsPage = () => {
             )}
 
             {/* ACCEPTED REQS NOTIFICATONS */}
-            {acceptedRequests.length > 0 && (
+            {visibleAcceptedRequests.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                   <BellIcon className="h-5 w-5 text-success" />
@@ -145,30 +180,41 @@ export const NotificationsPage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {acceptedRequests.map((notification) => (
+                  {visibleAcceptedRequests.map((notification) => (
                     <div key={notification._id} className="card bg-base-200 shadow-sm">
                       <div className="card-body p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="avatar mt-1 size-10 rounded-full">
-                            <img
-                              src={notification.recipient.profilePic}
-                              alt={`${notification.recipient.fullName}'s Avatar`}
-                              onError={handleImageError}
-                            />
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="avatar mt-1 size-10 rounded-full">
+                              <img
+                                src={notification.recipient.profilePic}
+                                alt={`${notification.recipient.fullName}'s Avatar`}
+                                onError={handleImageError}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold">{notification.recipient.fullName}</h3>
+                              <p className="text-sm my-1">
+                                You are connected with {notification.recipient.fullName}
+                              </p>
+                              <p className="text-xs flex items-center opacity-70">
+                                <ClockIcon className="h-3 w-3 mr-1" />
+                                Recently
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{notification.recipient.fullName}</h3>
-                            <p className="text-sm my-1">
-                              You are connected with {notification.recipient.fullName}
-                            </p>
-                            <p className="text-xs flex items-center opacity-70">
-                              <ClockIcon className="h-3 w-3 mr-1" />
-                              Recently
-                            </p>
-                          </div>
-                          <div className="badge badge-success">
-                            <MessageSquareIcon className="h-3 w-3 mr-1" />
-                            New Friend
+                          <div className="flex items-center gap-2">
+                            <div className="badge badge-success">
+                              <MessageSquareIcon className="h-3 w-3 mr-1" />
+                              New Friend
+                            </div>
+                            <button
+                              onClick={() => handleDismissNotification(notification._id)}
+                              className="btn btn-ghost btn-xs"
+                              title="Dismiss notification"
+                            >
+                              <XIcon className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -178,7 +224,7 @@ export const NotificationsPage = () => {
               </section>
             )}
 
-            {incomingRequests.length === 0 && acceptedRequests.length === 0 && pendingOutgoing.length === 0 && (
+            {incomingRequests.length === 0 && visibleAcceptedRequests.length === 0 && pendingOutgoing.length === 0 && (
               <NoNotificationsFound />
             )}
           </>

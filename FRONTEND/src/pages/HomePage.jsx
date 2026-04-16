@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   getUserFriends,
   sendFriendRequest,
+  withdrawFriendRequest,
 } from "../utils/api";
 import { Link } from "react-router";
-import { CheckCircleIcon, MapPinIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { CheckCircleIcon, MapPinIcon, UserPlusIcon, UsersIcon, TrashIcon } from "lucide-react";
 
 import { capitialize, handleImageError } from "../utils/utils";
 
@@ -16,7 +17,6 @@ import NoFriendsFound from "../components/NoFriendsFounds";
 
 export const HomePage = () => {
   const queryClient = useQueryClient();
-  const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
@@ -38,15 +38,22 @@ export const HomePage = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] }),
   });
 
-  useEffect(() => {
+  const { mutate: withdrawRequestMutation, isPending: isWithdrawing } = useMutation({
+    mutationFn: withdrawFriendRequest,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] }),
+  });
+
+  // Memoize the outgoing requests map to avoid unnecessary recomputes
+  const { outgoingRequestsIds, outgoingRequestsMap } = useMemo(() => {
     const outgoingIds = new Set();
-    if (outgoingFriendReqs && outgoingFriendReqs.length > 0) {
-      outgoingFriendReqs.forEach((req) => {
+    const requestMap = {};
+    if (outgoingFriendReqs?.outgoingReqs?.length > 0) {
+      outgoingFriendReqs.outgoingReqs.forEach((req) => {
         outgoingIds.add(req.recipient._id);
+        requestMap[req.recipient._id] = req._id;
       });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOutgoingRequestsIds(outgoingIds);
     }
+    return { outgoingRequestsIds: outgoingIds, outgoingRequestsMap: requestMap };
   }, [outgoingFriendReqs]);
 
   return (
@@ -145,15 +152,19 @@ export const HomePage = () => {
                       {/* Action button */}
                       <button
                         className={`btn w-full mt-2 ${
-                          hasRequestBeenSent ? "btn-disabled" : "btn-primary"
+                          hasRequestBeenSent ? "btn-error" : "btn-primary"
                         } `}
-                        onClick={() => sendRequestMutation(user._id)}
-                        disabled={hasRequestBeenSent || isPending}
+                        onClick={() => 
+                          hasRequestBeenSent 
+                            ? withdrawRequestMutation(outgoingRequestsMap[user._id])
+                            : sendRequestMutation(user._id)
+                        }
+                        disabled={isPending || isWithdrawing}
                       >
                         {hasRequestBeenSent ? (
                           <>
-                            <CheckCircleIcon className="size-4 mr-2" />
-                            Request Sent
+                            <TrashIcon className="size-4 mr-2" />
+                            Withdraw Request
                           </>
                         ) : (
                           <>

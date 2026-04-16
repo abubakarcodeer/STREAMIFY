@@ -119,3 +119,25 @@ exports.getOutgoingFriendReqs = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 }
+
+exports.withdrawFriendRequest = async (req, res) => {
+    try{
+        const {id:requestId} = req.params;
+        const friendRequest = await FriendRequest.findById(requestId);
+        
+        if(!friendRequest){
+            return res.status(404).json({ message: "Friend request not found" });
+        }
+        
+        if(friendRequest.sender.toString() !== req.user.id){
+            return res.status(403).json({ message: "You are not authorized to withdraw this friend request" });
+        }
+        
+        await FriendRequest.findByIdAndDelete(requestId);
+        res.status(200).json({ message: "Friend request withdrawn" });
+
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+}
